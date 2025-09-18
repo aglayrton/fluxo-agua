@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: fluxo-agua-web
+    env_file:
+      - .env
+    environment:
+      - PORT=${PORT:-8000}
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - .:/app
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn setup.wsgi:application --bind 0.0.0.0:${PORT:-8000}"
