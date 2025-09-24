@@ -36,33 +36,19 @@ class FluxoViewSet(ModelViewSet):
             FluxoAgua.objects.filter(sensor_id=sensor_id).order_by("-data_hora").first()
         )
 
-        incremento = None
+        valor_diferenca = None
 
         if ultima_leitura:
             ultimo_valor = ultima_leitura.valor
-
-            if valor_recebido == ultimo_valor:
-                # Igual → ignora
-                return Response(
-                    {"detail": "Valor repetido, leitura ignorada."},
-                    status=status.HTTP_200_OK,
-                )
-
-            elif valor_recebido > ultimo_valor:
-                # Incremento normal
-                incremento = valor_recebido - ultimo_valor
-
-            else:
-                # Reset detectado
-                incremento = valor_recebido
-
+            valor_diferenca = valor_recebido - ultimo_valor
         else:
-            # Primeira leitura do sensor → considera o valor recebido como incremento
-            incremento = valor_recebido
+            # Primeira leitura do sensor → diferença será o próprio valor
+            valor_diferenca = valor_recebido
 
-        # Cria o registro com o incremento (não o valor bruto do sensor)
+        # Cria o registro com o valor original e a diferença
         data_para_salvar = request.data.copy()
-        data_para_salvar["valor"] = incremento
+        data_para_salvar["valor"] = valor_recebido
+        data_para_salvar["valor_diferenca"] = valor_diferenca
 
         serializer = self.get_serializer(data=data_para_salvar)
         serializer.is_valid(raise_exception=True)

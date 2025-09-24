@@ -11,6 +11,7 @@ class FluxoAgua(models.Model):
     sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE, related_name="leituras")
     data_hora = models.DateTimeField(default=timezone.now)
     valor = models.DecimalField(max_digits=10, decimal_places=2)  # litros instantâneos
+    valor_diferenca = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # diferença entre valor atual e anterior
 
     def __str__(self):
         return f"{self.sensor.nome} - {self.data_hora} - {self.valor} L"
