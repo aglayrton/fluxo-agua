@@ -22,7 +22,13 @@ class FluxoViewSet(ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         sensor_id = request.data.get("sensor")
-        valor_recebido = Decimal(request.data.get("valor"))
+        valor_str = request.data.get("valor")
+
+        # Trata string convertendo vírgula para ponto se necessário
+        if isinstance(valor_str, str):
+            valor_str = valor_str.strip().replace(',', '.')
+
+        valor_recebido = Decimal(valor_str)
 
         # Busca última leitura do sensor
         ultima_leitura = (
