@@ -115,7 +115,7 @@ class ConsumoMensalView(ViewSet):
 
         # Agrupa consumo por dia e sensor
         consumo_por_dia = leituras.values("data_hora__date", "sensor__nome").annotate(
-            consumo_total=Sum("valor")
+            consumo_total=Sum("valor_diferenca")
         )
 
         resposta = [
@@ -127,7 +127,7 @@ class ConsumoMensalView(ViewSet):
             for c in consumo_por_dia
         ]
 
-        total_mes = leituras.aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
+        total_mes = leituras.aggregate(total=Sum("valor_diferenca"))["total"] or Decimal("0.00")
 
         return Response(
             {
