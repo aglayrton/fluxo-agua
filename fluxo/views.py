@@ -87,7 +87,7 @@ class ConsumoResidenciaView(ViewSet):
             for c in consumo_por_sensor
         ]
 
-        total_residencia = leituras.aggregate(total=Sum("valor"))["total"] or Decimal(
+        total_residencia = leituras.aggregate(total=Sum("valor_diferenca"))["total"] or Decimal(
             "0.00"
         )
 
