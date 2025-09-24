@@ -18,7 +18,8 @@ class SensorViewSet(ModelViewSet):
 
 class FluxoViewSet(ModelViewSet):
     serializer_class = FluxoAguaSerializer
-    queryset = FluxoAgua.objects.all()
+    queryset = FluxoAgua.objects.all().order_by("-id")
+    
 
     def create(self, request, *args, **kwargs):
         sensor_id = request.data.get("sensor")
