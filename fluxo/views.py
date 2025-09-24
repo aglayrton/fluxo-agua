@@ -40,7 +40,11 @@ class FluxoViewSet(ModelViewSet):
 
         if ultima_leitura:
             ultimo_valor = ultima_leitura.valor
-            valor_diferenca = valor_recebido - ultimo_valor
+            
+            if valor_recebido < ultimo_valor:
+                valor_diferenca = valor_recebido
+            else:
+                valor_diferenca = valor_recebido - ultimo_valor
         else:
             # Primeira leitura do sensor → diferença será o próprio valor
             valor_diferenca = valor_recebido
@@ -74,7 +78,7 @@ class ConsumoResidenciaView(ViewSet):
 
         # Agrega consumo por sensor
         consumo_por_sensor = leituras.values("sensor__nome").annotate(
-            consumo_total=Sum("valor")
+            consumo_total=Sum("valor_diferenca")
         )
 
         # Formata a resposta
