@@ -1,4 +1,3 @@
-
 import os
 from pathlib import Path
 
@@ -32,6 +31,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'fluxo',
     'rest_framework',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -43,6 +43,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'setup.urls'
@@ -139,3 +140,5 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 APPEND_SLASH=False
+
+CORS_ALLOW_ALL_ORIGINS = True

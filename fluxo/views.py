@@ -1,12 +1,14 @@
 from decimal import Decimal
+
+from django.db.models import Sum
+from django.utils import timezone
 from django.utils.timezone import make_aware
-from rest_framework.viewsets import ModelViewSet, ViewSet
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet, ViewSet
+
 from .models import FluxoAgua, Sensor
 from .serializers import FluxoAguaSerializer, SensorSerializer
-from django.utils import timezone
-from django.db.models import Sum
 
 
 class SensorViewSet(ModelViewSet):
@@ -24,9 +26,7 @@ class FluxoViewSet(ModelViewSet):
 
         # Busca última leitura do sensor
         ultima_leitura = (
-            FluxoAgua.objects.filter(sensor_id=sensor_id)
-            .order_by("-data_hora")
-            .first()
+            FluxoAgua.objects.filter(sensor_id=sensor_id).order_by("-data_hora").first()
         )
 
         incremento = None
@@ -86,7 +86,7 @@ class ConsumoResidenciaView(ViewSet):
 
         # Formata a resposta
         resposta = [
-            {"sensor": c["sensor__nome"], "consumo": str(c["consumo_total"])}
+            {"sensor": c["sensor__nome"], "consumo": f"{c['consumo_total']:.2f}"}
             for c in consumo_por_sensor
         ]
 
@@ -98,7 +98,7 @@ class ConsumoResidenciaView(ViewSet):
             {
                 "data": hoje.strftime("%d/%m/%Y"),
                 "sensores": resposta,
-                "total_residencia": str(total_residencia),
+                "total_residencia": f"{total_residencia:.2f}",
             }
         )
 
@@ -125,7 +125,7 @@ class ConsumoMensalView(ViewSet):
             {
                 "data": c["data_hora__date"].strftime("%d/%m/%Y"),
                 "sensor": c["sensor__nome"],
-                "consumo_total": str(c["consumo_total"]),
+                "consumo_total": f"{c['consumo_total']:.2f}",
             }
             for c in consumo_por_dia
         ]
@@ -135,6 +135,6 @@ class ConsumoMensalView(ViewSet):
         return Response(
             {
                 "consumo_por_dia": resposta,
-                "total_mes": str(total_mes),
+                "total_mes": f"{total_mes:.2f}",
             }
         )
