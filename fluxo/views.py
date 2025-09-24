@@ -1,13 +1,15 @@
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 from django.utils.timezone import make_aware
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ViewSet
 
-from .models import FluxoAgua, Sensor
+from .models import FluxoAgua, Sensor, ConsumoDiario
 from .serializers import FluxoAguaSerializer, SensorSerializer
 
 
@@ -64,6 +66,53 @@ class FluxoViewSet(ModelViewSet):
             fluxo.save()
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'])
+    def reset_database(self, request):
+        """
+        Endpoint para resetar completamente o banco de dados
+        Requer confirmação via parâmetro 'confirm': true
+        """
+        if not request.data.get('confirm'):
+            return Response(
+                {
+                    "error": "Operação requer confirmação",
+                    "message": "Envie 'confirm': true para confirmar o reset do banco",
+                    "warning": "Esta operação irá deletar TODOS os dados!"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            with transaction.atomic():
+                # Conta registros antes de deletar
+                deleted_fluxo = FluxoAgua.objects.all().count()
+                deleted_consumo = ConsumoDiario.objects.all().count()
+                deleted_sensor = Sensor.objects.all().count()
+
+                # Deleta todos os registros
+                FluxoAgua.objects.all().delete()
+                ConsumoDiario.objects.all().delete()
+                Sensor.objects.all().delete()
+
+                return Response({
+                    "success": True,
+                    "message": "Banco de dados resetado com sucesso!",
+                    "deleted_records": {
+                        "fluxo_agua": deleted_fluxo,
+                        "consumo_diario": deleted_consumo,
+                        "sensores": deleted_sensor
+                    }
+                }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {
+                    "error": "Erro ao resetar banco de dados",
+                    "details": str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class ConsumoResidenciaView(ViewSet):
