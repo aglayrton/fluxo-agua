@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -74,25 +76,15 @@ WSGI_APPLICATION = "setup.wsgi.application"
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 
-# Configuração do banco de dados via variáveis de ambiente
-if os.environ.get("DJANGO_DB_ENGINE"):
-    DATABASES = {
-        "default": {
-            "ENGINE": os.environ.get("DJANGO_DB_ENGINE"),
-            "NAME": os.environ.get("DJANGO_DB_NAME"),
-            "USER": os.environ.get("DJANGO_DB_USER", ""),
-            "PASSWORD": os.environ.get("DJANGO_DB_PASSWORD", ""),
-            "HOST": os.environ.get("DJANGO_DB_HOST", ""),
-            "PORT": os.environ.get("DJANGO_DB_PORT", ""),
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+# Configuração do banco de dados usando DATABASE_URL
+DATABASES = {
+    "default": dj_database_url.parse(
+        os.environ.get(
+            "DATABASE_URL",
+            "postgresql://user:password@db:5432/db",
+        )
+    )
+}
 
 
 # Password validation
@@ -141,4 +133,3 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 APPEND_SLASH = False
-
