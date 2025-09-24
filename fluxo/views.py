@@ -33,7 +33,7 @@ class FluxoViewSet(ModelViewSet):
 
         # Busca última leitura do sensor
         ultima_leitura = (
-            FluxoAgua.objects.filter(sensor_id=sensor_id).order_by("-data_hora").first()
+            FluxoAgua.objects.filter(sensor_id=sensor_id).order_by("-id").first()
         )
 
         valor_diferenca = None
