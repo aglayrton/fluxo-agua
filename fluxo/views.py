@@ -153,37 +153,137 @@ class ConsumoResidenciaView(ViewSet):
 
 class ConsumoMensalView(ViewSet):
     """
-    Retorna consumo diário de um mês e total do mês
+    Retorna consumo mensal da residência
+
+    - **GET /consumo-mensal/**: Retorna consumo de todos os meses do ano atual
+    - **GET /consumo-mensal/?mes=X**: Retorna consumo detalhado do mês X do ano atual (1-12)
     """
 
-    def list(self, request, ano=None, mes=None):
-        if ano is None or mes is None:
-            hoje = timezone.localdate()
-            ano = hoje.year
-            mes = hoje.month
+    @swagger_auto_schema(
+        operation_description="Retorna consumo mensal. Sem parâmetros retorna todos os meses do ano atual. Com parâmetro 'mes' retorna detalhes do mês específico.",
+        manual_parameters=[
+            openapi.Parameter(
+                'mes',
+                openapi.IN_QUERY,
+                description="Mês específico para consultar (1-12). Se não informado, retorna todos os meses do ano atual.",
+                type=openapi.TYPE_INTEGER,
+                required=False,
+                minimum=1,
+                maximum=12
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description="Consumo mensal retornado com sucesso",
+                examples={
+                    "application/json": {
+                        "ano": 2025,
+                        "meses": [
+                            {
+                                "mes": 1,
+                                "nome_mes": "Janeiro",
+                                "consumo_total": "15000.50"
+                            },
+                            {
+                                "mes": 2,
+                                "nome_mes": "Fevereiro",
+                                "consumo_total": "12500.75"
+                            }
+                        ],
+                        "total_ano": "27501.25"
+                    }
+                }
+            )
+        }
+    )
+    def list(self, request):
+        hoje = timezone.localdate()
+        ano_atual = hoje.year
+        mes_param = request.query_params.get('mes')
 
-        leituras = FluxoAgua.objects.filter(data_hora__year=ano, data_hora__month=mes)
+        # Se foi passado um mês específico, retorna detalhes daquele mês
+        if mes_param:
+            try:
+                mes = int(mes_param)
+                if mes < 1 or mes > 12:
+                    return Response(
+                        {"error": "Mês deve estar entre 1 e 12"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except ValueError:
+                return Response(
+                    {"error": "Mês deve ser um número inteiro"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        # Agrupa consumo por dia e sensor
-        consumo_por_dia = leituras.values("data_hora__date", "sensor__nome").annotate(
+            leituras = FluxoAgua.objects.filter(data_hora__year=ano_atual, data_hora__month=mes)
+
+            # Agrupa consumo por dia e sensor
+            consumo_por_dia = leituras.values("data_hora__date", "sensor__nome").annotate(
+                consumo_total=Sum("valor_diferenca")
+            )
+
+            resposta_dias = [
+                {
+                    "data": c["data_hora__date"].strftime("%d/%m/%Y"),
+                    "sensor": c["sensor__nome"],
+                    "consumo_total": f"{c['consumo_total']:.2f}",
+                }
+                for c in consumo_por_dia
+            ]
+
+            total_mes = leituras.aggregate(total=Sum("valor_diferenca"))["total"] or Decimal("0.00")
+
+            # Nomes dos meses em português
+            meses_nomes = [
+                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+            ]
+
+            return Response(
+                {
+                    "ano": ano_atual,
+                    "mes": mes,
+                    "nome_mes": meses_nomes[mes - 1],
+                    "consumo_por_dia": resposta_dias,
+                    "total_mes": f"{total_mes:.2f}",
+                }
+            )
+
+        # Caso contrário, retorna todos os meses do ano atual
+        leituras_ano = FluxoAgua.objects.filter(data_hora__year=ano_atual)
+
+        # Agrupa consumo por mês
+        consumo_por_mes = leituras_ano.values("data_hora__month").annotate(
             consumo_total=Sum("valor_diferenca")
-        )
+        ).order_by("data_hora__month")
 
-        resposta = [
-            {
-                "data": c["data_hora__date"].strftime("%d/%m/%Y"),
-                "sensor": c["sensor__nome"],
-                "consumo_total": f"{c['consumo_total']:.2f}",
-            }
-            for c in consumo_por_dia
+        # Cria um dicionário com o consumo de cada mês
+        meses_consumo = {c["data_hora__month"]: c["consumo_total"] for c in consumo_por_mes}
+
+        # Nomes dos meses em português
+        meses_nomes = [
+            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
         ]
 
-        total_mes = leituras.aggregate(total=Sum("valor_diferenca"))["total"] or Decimal("0.00")
+        # Monta resposta com todos os 12 meses (mesmo que alguns tenham consumo zero)
+        meses_resposta = [
+            {
+                "mes": i + 1,
+                "nome_mes": meses_nomes[i],
+                "consumo_total": f"{meses_consumo.get(i + 1, Decimal('0.00')):.2f}"
+            }
+            for i in range(12)
+        ]
+
+        total_ano = leituras_ano.aggregate(total=Sum("valor_diferenca"))["total"] or Decimal("0.00")
 
         return Response(
             {
-                "consumo_por_dia": resposta,
-                "total_mes": f"{total_mes:.2f}",
+                "ano": ano_atual,
+                "meses": meses_resposta,
+                "total_ano": f"{total_ano:.2f}",
             }
         )
 
