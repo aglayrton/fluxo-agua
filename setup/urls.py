@@ -3,6 +3,7 @@ from django.urls import path, include, re_path
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+import os
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -17,6 +18,9 @@ schema_view = get_schema_view(
         - **Meta de Consumo**: Configuração de meta diária de consumo
         - **Controle de Fluxo**: Monitoramento e controle automático/manual do fluxo (on/off)
         - **Consumo**: Consulta de consumo diário e mensal
+
+        ## Base URL
+        - Produção: https://fluxo-agua.kauan.space
         """,
         terms_of_service="https://www.example.com/terms/",
         contact=openapi.Contact(email="contato@example.com"),
@@ -24,6 +28,8 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
+    # Define o esquema baseado no ambiente (https em produção)
+    schemes=['https', 'http'],
 )
 
 urlpatterns = [

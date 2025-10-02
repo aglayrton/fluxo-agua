@@ -11,8 +11,8 @@ from rest_framework.viewsets import ModelViewSet, ViewSet
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from .models import FluxoAgua, Sensor, ConsumoDiario, MetaConsumo, ControleFluxo
-from .serializers import FluxoAguaSerializer, SensorSerializer, MetaConsumoSerializer, ControleFluxoSerializer
+from .models import FluxoAgua, Sensor, ConsumoDiario, MetaConsumo, ControleFluxo, EmailNotification
+from .serializers import FluxoAguaSerializer, SensorSerializer, MetaConsumoSerializer, ControleFluxoSerializer, EmailNotificationSerializer
 
 
 class SensorViewSet(ModelViewSet):
@@ -426,7 +426,12 @@ class ControleFluxoViewSet(ViewSet):
         hoje = timezone.localdate()
         controle, created = ControleFluxo.objects.get_or_create(
             data=hoje,
-            defaults={'status': 'on', 'desligamento_automatico_ocorreu': False}
+            defaults={
+                'status': 'on',
+                'desligamento_automatico_ocorreu': False,
+                'usuario_alterou_manualmente': False,
+                'email_enviado_hoje': False
+            }
         )
         serializer = ControleFluxoSerializer(controle)
         return Response(serializer.data)
@@ -472,7 +477,12 @@ class ControleFluxoViewSet(ViewSet):
 
         controle, created = ControleFluxo.objects.get_or_create(
             data=hoje,
-            defaults={'status': 'on', 'desligamento_automatico_ocorreu': False}
+            defaults={
+                'status': 'on',
+                'desligamento_automatico_ocorreu': False,
+                'usuario_alterou_manualmente': False,
+                'email_enviado_hoje': False
+            }
         )
 
         controle.status = novo_status
@@ -480,4 +490,81 @@ class ControleFluxoViewSet(ViewSet):
         controle.save()
 
         serializer = ControleFluxoSerializer(controle)
+        return Response(serializer.data)
+
+
+class EmailNotificationViewSet(ModelViewSet):
+    """
+    CRUD completo para Emails de Notificação
+
+    Gerencia os emails que receberão alertas quando o consumo ultrapassar a meta.
+
+    - **GET /emails-notificacao/**: Lista todos os emails cadastrados
+    - **POST /emails-notificacao/**: Cadastra um novo email
+    - **GET /emails-notificacao/{id}/**: Retorna detalhes de um email
+    - **PUT/PATCH /emails-notificacao/{id}/**: Atualiza um email
+    - **DELETE /emails-notificacao/{id}/**: Remove um email
+    """
+    queryset = EmailNotification.objects.all()
+    serializer_class = EmailNotificationSerializer
+
+    @swagger_auto_schema(
+        operation_description="Lista todos os emails cadastrados para receber notificações",
+        responses={
+            200: EmailNotificationSerializer(many=True)
+        }
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Cadastra um novo email para receber notificações de consumo",
+        request_body=EmailNotificationSerializer,
+        responses={
+            201: EmailNotificationSerializer,
+            400: openapi.Response(
+                description="Erro de validação",
+                examples={
+                    "application/json": {
+                        "email": ["Este campo é obrigatório."]
+                    }
+                }
+            )
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        methods=['patch'],
+        operation_description="Ativa ou desativa um email de notificação",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'ativo': openapi.Schema(
+                    type=openapi.TYPE_BOOLEAN,
+                    description='Status do email (true=ativo, false=inativo)'
+                )
+            }
+        ),
+        responses={
+            200: EmailNotificationSerializer
+        }
+    )
+    @action(detail=True, methods=['patch'])
+    def toggle_ativo(self, request, pk=None):
+        """Ativa ou desativa um email de notificação"""
+        email_notif = self.get_object()
+        ativo = request.data.get('ativo')
+
+        if ativo is None:
+            return Response(
+                {"error": "Campo 'ativo' é obrigatório"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        email_notif.ativo = ativo
+        email_notif.save()
+
+        serializer = self.get_serializer(email_notif)
         return Response(serializer.data)

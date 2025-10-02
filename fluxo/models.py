@@ -61,6 +61,7 @@ class ControleFluxo(models.Model):
     status = models.CharField(max_length=3, choices=[('on', 'Ligado'), ('off', 'Desligado')], default='on')
     desligamento_automatico_ocorreu = models.BooleanField(default=False)
     usuario_alterou_manualmente = models.BooleanField(default=False)
+    email_enviado_hoje = models.BooleanField(default=False)
     data_hora_atualizacao = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -69,3 +70,20 @@ class ControleFluxo(models.Model):
 
     def __str__(self):
         return f"{self.data} - Status: {self.status}"
+
+
+class EmailNotification(models.Model):
+    email = models.EmailField(unique=True)
+    ativo = models.BooleanField(default=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Email de Notificação"
+        verbose_name_plural = "Emails de Notificação"
+        ordering = ['-data_criacao']
+
+    def __str__(self):
+        status = "Ativo" if self.ativo else "Inativo"
+        return f"{self.email} - {status}"
+

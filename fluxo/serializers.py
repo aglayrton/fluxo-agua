@@ -1,6 +1,6 @@
 from decimal import Decimal, InvalidOperation
 from rest_framework import serializers
-from .models import FluxoAgua, ConsumoDiario, Sensor, MetaConsumo, ControleFluxo
+from .models import FluxoAgua, ConsumoDiario, Sensor, MetaConsumo, ControleFluxo, EmailNotification
 
 class SensorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -53,5 +53,18 @@ class MetaConsumoSerializer(serializers.ModelSerializer):
 class ControleFluxoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ControleFluxo
-        fields = ['data', 'status', 'desligamento_automatico_ocorreu', 'usuario_alterou_manualmente', 'data_hora_atualizacao']
-        read_only_fields = ['data', 'desligamento_automatico_ocorreu', 'data_hora_atualizacao']
+        fields = ['data', 'status', 'desligamento_automatico_ocorreu', 'usuario_alterou_manualmente', 'email_enviado_hoje', 'data_hora_atualizacao']
+        read_only_fields = ['data', 'desligamento_automatico_ocorreu', 'email_enviado_hoje', 'data_hora_atualizacao']
+
+
+class EmailNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailNotification
+        fields = ['id', 'email', 'ativo', 'data_criacao', 'data_atualizacao']
+        read_only_fields = ['id', 'data_criacao', 'data_atualizacao']
+
+    def validate_email(self, value):
+        """Valida formato do email"""
+        if not value:
+            raise serializers.ValidationError("Email é obrigatório")
+        return value.lower().strip()

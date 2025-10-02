@@ -6,7 +6,8 @@ from .views import (
     ConsumoMensalView,
     SensorViewSet,
     MetaConsumoViewSet,
-    ControleFluxoViewSet
+    ControleFluxoViewSet,
+    EmailNotificationViewSet
 )
 
 router = routers.DefaultRouter()
@@ -16,6 +17,7 @@ router.register("consumo-residencia", ConsumoResidenciaView, basename="consumo_r
 router.register("consumo-mensal", ConsumoMensalView, basename="consumo_mensal")
 router.register("meta-consumo", MetaConsumoViewSet, basename="meta_consumo")
 router.register("controle-fluxo", ControleFluxoViewSet, basename="controle_fluxo")
+router.register("emails-notificacao", EmailNotificationViewSet, basename="email_notificacao")
 
 urlpatterns = [
     path("", include(router.urls)),
