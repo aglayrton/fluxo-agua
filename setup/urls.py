@@ -28,8 +28,6 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
-    # Define o esquema baseado no ambiente (https em produção)
-    schemes=['https', 'http'],
 )
 
 urlpatterns = [
