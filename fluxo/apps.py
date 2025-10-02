@@ -7,6 +7,7 @@ class FluxoConfig(AppConfig):
     name = 'fluxo'
 
     def ready(self):
+        import fluxo.signals  # Importa os signals
         if 'runserver' in sys.argv:
             if os.environ.get('RUN_MAIN') == 'true':
                 self.limpar_fluxo_agua()

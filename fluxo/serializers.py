@@ -1,6 +1,6 @@
 from decimal import Decimal, InvalidOperation
 from rest_framework import serializers
-from .models import FluxoAgua, ConsumoDiario, Sensor
+from .models import FluxoAgua, ConsumoDiario, Sensor, MetaConsumo, ControleFluxo
 
 class SensorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -42,3 +42,16 @@ class ConsumoDiarioSerializer(serializers.ModelSerializer):
                     "Consumo total deve ser um número válido. Exemplo: '123.45' ou '123,45'"
                 )
         return value
+
+
+class MetaConsumoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MetaConsumo
+        fields = "__all__"
+
+
+class ControleFluxoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ControleFluxo
+        fields = ['data', 'status', 'desligamento_automatico_ocorreu', 'usuario_alterou_manualmente', 'data_hora_atualizacao']
+        read_only_fields = ['data', 'desligamento_automatico_ocorreu', 'data_hora_atualizacao']

@@ -8,9 +8,11 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ViewSet
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
-from .models import FluxoAgua, Sensor, ConsumoDiario
-from .serializers import FluxoAguaSerializer, SensorSerializer
+from .models import FluxoAgua, Sensor, ConsumoDiario, MetaConsumo, ControleFluxo
+from .serializers import FluxoAguaSerializer, SensorSerializer, MetaConsumoSerializer, ControleFluxoSerializer
 
 
 class SensorViewSet(ModelViewSet):
@@ -184,3 +186,198 @@ class ConsumoMensalView(ViewSet):
                 "total_mes": f"{total_mes:.2f}",
             }
         )
+
+
+class MetaConsumoViewSet(ViewSet):
+    """
+    Gerenciamento da Meta de Consumo da Residência (Singleton)
+
+    Apenas uma meta pode existir no sistema. Não é necessário passar ID como parâmetro.
+
+    - **GET /meta-consumo/**: Retorna a meta atual (cria uma padrão se não existir)
+    - **POST /meta-consumo/**: Cria a primeira meta (apenas se não existir)
+    - **PUT/PATCH /meta-consumo/**: Atualiza a meta existente
+    """
+
+    @swagger_auto_schema(
+        operation_description="Retorna a meta de consumo atual da residência",
+        responses={
+            200: openapi.Response(
+                description="Meta retornada com sucesso",
+                schema=MetaConsumoSerializer,
+                examples={
+                    "application/json": {
+                        "id": 1,
+                        "meta_diaria_litros": "1000.00",
+                        "data_criacao": "2025-10-02T10:00:00Z",
+                        "data_atualizacao": "2025-10-02T10:00:00Z"
+                    }
+                }
+            )
+        }
+    )
+    def list(self, request):
+        """Retorna a meta atual"""
+        meta = MetaConsumo.get_meta_atual()
+        if not meta:
+            return Response(
+                {"message": "Nenhuma meta configurada"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = MetaConsumoSerializer(meta)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(
+        operation_description="Cria a primeira meta de consumo (apenas se não existir)",
+        request_body=MetaConsumoSerializer,
+        responses={
+            201: MetaConsumoSerializer,
+            400: openapi.Response(
+                description="Já existe uma meta cadastrada",
+                examples={
+                    "application/json": {
+                        "error": "Já existe uma meta cadastrada. Use PUT/PATCH para atualizar."
+                    }
+                }
+            )
+        }
+    )
+    def create(self, request):
+        """Cria a primeira meta"""
+        if MetaConsumo.objects.exists():
+            return Response(
+                {"error": "Já existe uma meta cadastrada. Use PUT/PATCH para atualizar."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = MetaConsumoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(
+        methods=['put', 'patch'],
+        operation_description="Atualiza a meta de consumo existente",
+        request_body=MetaConsumoSerializer,
+        responses={
+            200: MetaConsumoSerializer,
+            404: openapi.Response(
+                description="Nenhuma meta encontrada",
+                examples={
+                    "application/json": {
+                        "error": "Nenhuma meta configurada. Use POST para criar."
+                    }
+                }
+            )
+        }
+    )
+    @action(detail=False, methods=['put', 'patch'])
+    def atualizar(self, request):
+        """Atualiza a meta existente"""
+        meta = MetaConsumo.get_meta_atual()
+        if not meta:
+            return Response(
+                {"error": "Nenhuma meta configurada. Use POST para criar."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        partial = request.method == 'PATCH'
+        serializer = MetaConsumoSerializer(meta, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class ControleFluxoViewSet(ViewSet):
+    """
+    Gerencia o status do fluxo de água (on/off)
+
+    ## Funcionalidades:
+    - **GET /controle-fluxo/**: Retorna o status atual do fluxo de hoje
+    - **PATCH /controle-fluxo/alterar_status/**: Permite alteração manual do status
+
+    ## Lógica de controle:
+    1. O sistema desliga automaticamente quando o consumo ultrapassa a meta (apenas 1x por dia)
+    2. O usuário pode reativar manualmente mesmo após desligamento automático
+    3. A decisão manual do usuário prevalece até o fim do dia
+    4. No dia seguinte, a lógica é resetada
+    """
+
+    @swagger_auto_schema(
+        operation_description="Retorna o status atual do fluxo de água",
+        responses={
+            200: openapi.Response(
+                description="Status do fluxo retornado com sucesso",
+                schema=ControleFluxoSerializer,
+                examples={
+                    "application/json": {
+                        "data": "2025-10-02",
+                        "status": "on",
+                        "desligamento_automatico_ocorreu": False,
+                        "usuario_alterou_manualmente": False,
+                        "data_hora_atualizacao": "2025-10-02T10:30:00Z"
+                    }
+                }
+            )
+        }
+    )
+    def list(self, request):
+        """Retorna o status do fluxo de hoje"""
+        hoje = timezone.localdate()
+        controle, created = ControleFluxo.objects.get_or_create(
+            data=hoje,
+            defaults={'status': 'on', 'desligamento_automatico_ocorreu': False}
+        )
+        serializer = ControleFluxoSerializer(controle)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(
+        methods=['patch'],
+        operation_description="Permite ao usuário alterar manualmente o status do fluxo",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['status'],
+            properties={
+                'status': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['on', 'off'],
+                    description='Novo status do fluxo: "on" para ligar, "off" para desligar'
+                )
+            },
+            example={'status': 'on'}
+        ),
+        responses={
+            200: ControleFluxoSerializer,
+            400: openapi.Response(
+                description="Erro de validação",
+                examples={
+                    "application/json": {
+                        "error": "Status deve ser \"on\" ou \"off\""
+                    }
+                }
+            )
+        }
+    )
+    @action(detail=False, methods=['patch'])
+    def alterar_status(self, request):
+        """Permite ao usuário alterar manualmente o status"""
+        hoje = timezone.localdate()
+        novo_status = request.data.get('status')
+
+        if novo_status not in ['on', 'off']:
+            return Response(
+                {'error': 'Status deve ser "on" ou "off"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        controle, created = ControleFluxo.objects.get_or_create(
+            data=hoje,
+            defaults={'status': 'on', 'desligamento_automatico_ocorreu': False}
+        )
+
+        controle.status = novo_status
+        controle.usuario_alterou_manualmente = True
+        controle.save()
+
+        serializer = ControleFluxoSerializer(controle)
+        return Response(serializer.data)

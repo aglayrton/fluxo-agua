@@ -29,3 +29,43 @@ class ConsumoDiario(models.Model):
 
     def __str__(self):
         return f"{self.sensor.nome} - {self.data} - {self.consumo_total} L"
+
+
+class MetaConsumo(models.Model):
+    meta_diaria_litros = models.DecimalField(max_digits=10, decimal_places=2)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Meta de Consumo"
+        verbose_name_plural = "Metas de Consumo"
+
+    def __str__(self):
+        return f"Meta diária: {self.meta_diaria_litros} L"
+
+    def save(self, *args, **kwargs):
+        """Garante que apenas um registro de meta exista"""
+        if not self.pk and MetaConsumo.objects.exists():
+            # Se já existe uma meta e estamos tentando criar outra, atualiza a existente
+            raise ValueError("Já existe uma meta cadastrada. Use PUT/PATCH para atualizar.")
+        return super().save(*args, **kwargs)
+
+    @classmethod
+    def get_meta_atual(cls):
+        """Retorna a meta atual ou None se não existir"""
+        return cls.objects.first()
+
+
+class ControleFluxo(models.Model):
+    data = models.DateField(unique=True)
+    status = models.CharField(max_length=3, choices=[('on', 'Ligado'), ('off', 'Desligado')], default='on')
+    desligamento_automatico_ocorreu = models.BooleanField(default=False)
+    usuario_alterou_manualmente = models.BooleanField(default=False)
+    data_hora_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Controle de Fluxo"
+        verbose_name_plural = "Controles de Fluxo"
+
+    def __str__(self):
+        return f"{self.data} - Status: {self.status}"
