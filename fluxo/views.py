@@ -91,10 +91,16 @@ class FluxoViewSet(ModelViewSet):
                 deleted_fluxo = FluxoAgua.objects.all().count()
                 deleted_consumo = ConsumoDiario.objects.all().count()
                 deleted_sensor = Sensor.objects.all().count()
+                deleted_meta = MetaConsumo.objects.all().count()
+                deleted_controle = ControleFluxo.objects.all().count()
+                deleted_email = EmailNotification.objects.all().count()
 
-                # Deleta todos os registros
+                # Deleta todos os registros de todas as tabelas
                 FluxoAgua.objects.all().delete()
                 ConsumoDiario.objects.all().delete()
+                MetaConsumo.objects.all().delete()
+                ControleFluxo.objects.all().delete()
+                EmailNotification.objects.all().delete()
                 Sensor.objects.all().delete()
 
                 return Response({
@@ -103,6 +109,9 @@ class FluxoViewSet(ModelViewSet):
                     "deleted_records": {
                         "fluxo_agua": deleted_fluxo,
                         "consumo_diario": deleted_consumo,
+                        "meta_consumo": deleted_meta,
+                        "controle_fluxo": deleted_controle,
+                        "email_notificacao": deleted_email,
                         "sensores": deleted_sensor
                     }
                 }, status=status.HTTP_200_OK)
