@@ -21,11 +21,6 @@ services:
     container_name: fluxo-agua-web
     env_file:
       - .env
-    environment:
-      DATABASE_URL: postgresql://fluxo_user:fluxo_password@db:5432/fluxo_agua_db
-      # Variáveis CORS podem ser sobrescritas aqui se necessário
-      # CORS_ALLOWED_ORIGINS: http://seu-frontend.com,http://outro-frontend.com
-      # CORS_ALLOW_ALL_ORIGINS: "False"
     ports:
       - "${HOST_PORT:-8000}:8000"
     volumes:
